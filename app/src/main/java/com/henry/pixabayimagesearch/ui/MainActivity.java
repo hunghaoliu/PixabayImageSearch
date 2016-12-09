@@ -1,117 +1,84 @@
 package com.henry.pixabayimagesearch.ui;
 
 import android.app.SearchManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.MenuItemCompat;
-import android.support.v7.app.AppCompatActivity;
+import android.support.v4.view.ViewPager;
+import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.SearchView;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Button;
+import android.view.View;
 import android.widget.EditText;
-import android.widget.Toast;
 
-import com.henry.pixabayimagesearch.Adapter.PixabayListAdapter;
-import com.henry.pixabayimagesearch.App;
-import com.henry.pixabayimagesearch.Bitmap.PixabayListLoader;
-import com.henry.pixabayimagesearch.Network.HttpHelper;
+import com.henry.pixabayimagesearch.Constants;
+import com.henry.pixabayimagesearch.Downloader.BackgroundDownloadTask;
 import com.henry.pixabayimagesearch.R;
+import com.henry.pixabayimagesearch.fragment.ImageGridFragment;
+import com.henry.pixabayimagesearch.fragment.ImageListFragment;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.lucasr.smoothie.AsyncGridView;
-import org.lucasr.smoothie.AsyncListView;
-import org.lucasr.smoothie.ItemManager;
-
-import java.util.ArrayList;
-
-import uk.co.senab.bitmapcache.BitmapLruCache;
-
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends ActionBarActivity {
     private static final String LOG_TAG = "PixabayImageSearch";
-    private AsyncListView mListView;
-    private AsyncGridView mGridView;
-    private SearchView searchView;
-    private boolean isGrid = false;
+
+    private static final String STATE_POSITION = "STATE_POSITION";
+
+    private ViewPager pager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        setContentView(R.layout.ac_complex);
 
-        mListView = (AsyncListView) findViewById(R.id.list);
-        mGridView = (AsyncGridView) findViewById(R.id.grid);
-        updateLayout();
+        int pagerPosition = savedInstanceState == null ? 0 : savedInstanceState.getInt(STATE_POSITION);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                isGrid = !isGrid;
-                updateLayout();
-            }
-        });
-
-        BitmapLruCache cache = App.getInstance(this).getBitmapCache();
-        PixabayListLoader loader = new PixabayListLoader(cache);
-
-        ItemManager.Builder builder = new ItemManager.Builder(loader);
-        builder.setPreloadItemsEnabled(true).setPreloadItemsCount(5);
-        builder.setThreadPoolSize(4);
-        ItemManager manager = builder.build();
-
-        mListView.setItemManager(manager);
-        mGridView.setItemManager(manager);
+        pager = (ViewPager) findViewById(R.id.pager);
+        pager.setAdapter(new ImagePagerAdapter(getSupportFragmentManager()));
+        pager.setCurrentItem(pagerPosition);
     }
 
-    private void updateLayout() {
-        if (!isGrid) {
-            mListView.setVisibility(View.VISIBLE);
-            mGridView.setVisibility(View.GONE);
-        } else {
-            mListView.setVisibility(View.GONE);
-            mGridView.setVisibility(View.VISIBLE);
-        }
-    }
+    private class ImagePagerAdapter extends FragmentPagerAdapter {
 
-    private class LoadPatternsListTask extends AsyncTask<Void, Void, ArrayList<String>> {
-        static final int NUM_PATTERNS = 100;
-        static final String URL = "http://www.colourlovers.com/api/patterns/new?format=json&numResults=" + NUM_PATTERNS;
+        Fragment listFragment;
+        Fragment gridFragment;
 
-        @Override
-        protected ArrayList<String> doInBackground(Void... params) {
-            ArrayList<String> urls = new ArrayList<String>();
-
-            JSONArray patternsArray = HttpHelper.loadJSON(URL);
-            final int nPatterns = patternsArray.length();
-
-            try {
-                for (int i = 0; i < nPatterns; i++) {
-                    JSONObject patternInfo = (JSONObject) patternsArray.get(i);
-                    urls.add(patternInfo.getString("imageUrl"));
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-
-            return urls;
+        ImagePagerAdapter(FragmentManager fm) {
+            super(fm);
+            listFragment = new ImageListFragment();
+            gridFragment = new ImageGridFragment();
         }
 
         @Override
-        protected void onPostExecute(ArrayList<String> urls) {
-            PixabayListAdapter adapter = new PixabayListAdapter(MainActivity.this, urls);
-            mListView.setAdapter(adapter);
-            mGridView.setAdapter(adapter);
+        public int getCount() {
+            return 2;
+        }
+
+        @Override
+        public Fragment getItem(int position) {
+            switch (position) {
+                case 0:
+                    return listFragment;
+                case 1:
+                    return gridFragment;
+                default:
+                    return null;
+            }
+        }
+
+        @Override
+        public CharSequence getPageTitle(int position) {
+            switch (position) {
+                case 0:
+                    return getString(R.string.title_list);
+                case 1:
+                    return getString(R.string.title_grid);
+                default:
+                    return null;
+            }
         }
     }
 
@@ -121,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
         final MenuItem searchItem = menu.findItem(R.id.action_search);
 
         if (searchItem != null) {
-            searchView = (SearchView) MenuItemCompat.getActionView(searchItem);
+            final SearchView searchView = (SearchView) MenuItemCompat.getActionView(searchItem);
             searchView.setOnCloseListener(new SearchView.OnCloseListener() {
                 @Override
                 public boolean onClose() {
@@ -146,8 +113,8 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public boolean onQueryTextSubmit(String query) {
                     // use this method when query submitted
-                    //Toast.makeText(getApplicationContext(), query, Toast.LENGTH_SHORT).show();
-                    new LoadPatternsListTask().execute();
+                    String url = String.format(Constants.PIXABAY_URL, query);
+                    new BackgroundDownloadTask(getApplicationContext()).execute(url);
                     return false;
                 }
 
@@ -163,5 +130,4 @@ public class MainActivity extends AppCompatActivity {
         }
         return super.onCreateOptionsMenu(menu);
     }
-
 }

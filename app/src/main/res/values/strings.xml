@@ -2,4 +2,8 @@
     <string name="app_name">PixabayImageSearch</string>
     <string name="action_settings">Settings</string>
     <string name="search">Search</string>
+    <string name="descr_image">Image</string>
+    <string name="title_list">Listview</string>
+    <string name="title_grid">Gridview</string>
+
 </resources>

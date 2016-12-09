@@ -16,6 +16,10 @@
 
 package com.henry.pixabayimagesearch.Network;
 
+import android.util.Log;
+
+import com.henry.pixabayimagesearch.Pixabay.PixabayModel;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 
@@ -26,8 +30,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import com.google.gson.Gson;
 
 public class HttpHelper {
+    private static final String LOG_TAG = "HttpHelper";
+
     static private String convertStreamToString(InputStream is) {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
         StringBuilder sb = new StringBuilder();
@@ -45,21 +52,22 @@ public class HttpHelper {
         return sb.toString();
     }
 
-    static public JSONArray loadJSON(String url) {
+    static public PixabayModel loadJSON(String url) {
         HttpURLConnection connection = null;
         JSONArray json = null;
         InputStream is = null;
+        PixabayModel model = null;
 
         try {
             connection = (HttpURLConnection) new URL(url).openConnection();
             connection.setConnectTimeout(5000);
 
             is = new BufferedInputStream(connection.getInputStream());
-            json = new JSONArray(convertStreamToString(is));
+
+            Gson gson = new Gson();
+            model = gson.fromJson(convertStreamToString(is), PixabayModel.class);
         } catch (IOException ioe) {
             ioe.printStackTrace();
-        } catch (JSONException je) {
-            je.printStackTrace();
         } finally {
             try {
                 if (is != null) {
@@ -74,7 +82,7 @@ public class HttpHelper {
             }
         }
 
-        return json;
+        return model;
     }
 
     static public InputStream loadImage(String url) {
